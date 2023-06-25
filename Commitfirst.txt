@@ -1,1 +1,2 @@
-first commit with sha256
+updated sha256
+added sha1

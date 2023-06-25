@@ -221,6 +221,65 @@ __device__ void sha256_update(SHA256_CTX *ctx, const BYTE data[], size_t len)
 
 }
 
+__device__ void copyfunc8(unsigned char* a, unsigned char* b){
+
+	a[7] = b[0];
+	a[6] = b[1];
+	a[5] = b[2];
+	a[4] = b[3];
+	a[3] = b[4];
+	a[2] = b[5];
+	a[1] = b[6];
+	a[0] = b[7];
+
+	return;
+}
+
+__device__ void copyfunc32(unsigned char*a, unsigned char*b){
+
+	a[3] = b[0];
+	a[2] = b[1];
+	a[1] = b[2];
+	a[0] = b[3];
+
+	a[7] = b[4];
+	a[6] = b[5];
+	a[5] = b[6];
+	a[4] = b[7];
+
+	a[11] = b[8];
+	a[10] = b[9];
+	a[9] = b[10];
+	a[8] = b[11];
+
+	a[15] = b[12];
+	a[14] = b[13];
+	a[13] = b[14];
+	a[12] = b[15];
+
+	a[19] = b[16];
+	a[18] = b[17];
+	a[17] = b[18];
+	a[16] = b[19];
+
+	a[23] = b[20];
+	a[22] = b[21];
+	a[21] = b[22];
+	a[20] = b[23];
+
+	a[27] = b[24];
+	a[26] = b[25];
+	a[25] = b[26];
+	a[24] = b[27];
+
+	a[31] = b[28];
+	a[30] = b[29];
+	a[29] = b[30];
+	a[28] = b[31];
+
+
+	return;
+}
 
 __device__ void sha256_final(SHA256_CTX *ctx, BYTE hash[])
 {
@@ -231,13 +290,14 @@ __device__ void sha256_final(SHA256_CTX *ctx, BYTE hash[])
 	// Pad whatever data is left in the buffer.
 	if (ctx->datalen < 56) {
 		ctx->data[i++] = 0x80;
-		while (i < 56)
-			ctx->data[i++] = 0x00;
+
+		memset(&ctx->data[i],0,56-i);
 	}
 	else {
 		ctx->data[i++] = 0x80;
-		while (i < 64)
-			ctx->data[i++] = 0x00;
+
+		memset(&ctx->data[i],0,64-i);
+
 		sha256_transform(ctx, ctx->data);
 
 		memset(&ctx->data[0], 0, 56);
@@ -245,29 +305,17 @@ __device__ void sha256_final(SHA256_CTX *ctx, BYTE hash[])
 
 	// Append to the padding the total message's length in bits and transform.
 	ctx->bitlen += ctx->datalen * 8;
-	ctx->data[63] = ctx->bitlen;
-	ctx->data[62] = ctx->bitlen >> 8;
-	ctx->data[61] = ctx->bitlen >> 16;
-	ctx->data[60] = ctx->bitlen >> 24;
-	ctx->data[59] = ctx->bitlen >> 32;
-	ctx->data[58] = ctx->bitlen >> 40;
-	ctx->data[57] = ctx->bitlen >> 48;
-	ctx->data[56] = ctx->bitlen >> 56;
+
+	copyfunc8(&ctx->data[56], (unsigned char*)&ctx->bitlen);
 
 	sha256_transform(ctx, ctx->data);
 
-	// Since this implementation uses little endian byte ordering and SHA uses big endian,
-	// reverse all the bytes when copying the final state to the output hash.
-	for (i = 0; i < 4; ++i) {
-		hash[i]      = (ctx->state[0] >> (24 - i * 8)) & 0x000000ff;
-		hash[i + 4]  = (ctx->state[1] >> (24 - i * 8)) & 0x000000ff;
-		hash[i + 8]  = (ctx->state[2] >> (24 - i * 8)) & 0x000000ff;
-		hash[i + 12] = (ctx->state[3] >> (24 - i * 8)) & 0x000000ff;
-		hash[i + 16] = (ctx->state[4] >> (24 - i * 8)) & 0x000000ff;
-		hash[i + 20] = (ctx->state[5] >> (24 - i * 8)) & 0x000000ff;
-		hash[i + 24] = (ctx->state[6] >> (24 - i * 8)) & 0x000000ff;
-		hash[i + 28] = (ctx->state[7] >> (24 - i * 8)) & 0x000000ff;
-	}
+
+	copyfunc32(hash, (unsigned char*) ctx->state);
+
 }
 
 #endif   // SHA256_H
+
+
+
